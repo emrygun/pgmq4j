@@ -23,7 +23,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        try (Connection conn = getConnection()) {
+        try {
             var pgmq = new PGMQueue(dataSource);
 
             pgmq.create("test");
