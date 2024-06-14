@@ -1,14 +1,13 @@
 package io.tembo.pgmq;
 
-import io.tembo.pgmq.statement.RawStatement;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 import static io.tembo.pgmq.statement.RawStatement.CREATE;
 import static io.tembo.pgmq.statement.RawStatement.CREATE_UNLOGGED;
@@ -17,8 +16,6 @@ import static io.tembo.pgmq.statement.RawStatement.CREATE_UNLOGGED;
  * Base class for interacting with a queue.
  */
 public class PGMQueue implements PGMQOperations {
-    private final Integer delay = 0;
-    private final Integer vt = 0;
     private final PGConnectionPoolDataSource pool;
 
     public PGMQueue(PGConnectionPoolDataSource pool) throws SQLException {
@@ -51,5 +48,26 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public void send(String queueName, String message) {
+    }
+
+    @Override
+    public Optional<List<PGMQueueMetadata>> listQueues() {
+        try {
+            ResultSet resultSet = pool.getConnection().prepareStatement("SELECT * from pgmq.list_queues();").executeQuery();
+            List<PGMQueueMetadata> list = new ArrayList<>();
+            while (resultSet.next()) {
+                var metadata = new PGMQueueMetadata(
+                        resultSet.getString("queue_name"),
+                        resultSet.getTimestamp("created_at").toInstant(),
+                        resultSet.getBoolean("is_unlogged"),
+                        resultSet.getBoolean("is_partitioned")
+                );
+                list.add(metadata);
+            }
+
+            return Optional.of(list);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

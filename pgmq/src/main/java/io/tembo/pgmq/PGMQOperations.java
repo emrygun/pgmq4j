@@ -2,6 +2,8 @@ package io.tembo.pgmq;
 
 
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
 
 interface PGMQOperations {
 
@@ -23,11 +25,13 @@ interface PGMQOperations {
      * }
      * </pre>
      *
-     * @param queue Queue name.
+     * @param queueName Queue name.
      */
     void destroy(String queueName);
 
     void send(String queueName, String message);
+
+    Optional<List<PGMQueueMetadata>> listQueues();
 
     //FIXME: Other operations
 }

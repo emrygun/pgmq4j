@@ -25,9 +25,13 @@ public class Main {
     public static void main(String[] args) {
         try (Connection conn = getConnection()) {
             var pgmq = new PGMQueue(dataSource);
+
             pgmq.create("test");
             pgmq.createUnlogged("test2");
 
+            pgmq.destroy("test");
+
+            System.out.println(pgmq.listQueues().get());
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
