@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>pgmq</module>
-        <module>exaamples/basic</module>
+        <module>examples/basic</module>
     </modules>
 
     <properties>

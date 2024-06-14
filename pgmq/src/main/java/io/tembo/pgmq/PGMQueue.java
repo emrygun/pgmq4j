@@ -30,20 +30,50 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public void create(String queueName) throws SQLException {
-        var statement = pool.getConnection().prepareStatement(CREATE.getStatement());
-        statement.setString(1, queueName);
-        statement.execute();
+        try {
+            var connection = pool.getConnection();
+            connection.setAutoCommit(false);
+
+            for (var statement : initQueueClientOnly(queueName, true)) {
+                connection.prepareStatement(statement).execute();
+            }
+            connection.commit();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void createUnlogged(String queueName) throws SQLException {
-        var statement = pool.getConnection().prepareStatement(CREATE_UNLOGGED.getStatement());
-        statement.setString(1, queueName);
-        statement.execute();
+        try {
+            var connection = pool.getConnection();
+            connection.setAutoCommit(false);
+
+            for (var statement : initQueueClientOnly(queueName, false)) {
+                connection.prepareStatement(statement).execute();
+            }
+            connection.commit();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void destroy(String queueName) {
+        try {
+            var connection = pool.getConnection();
+            connection.setAutoCommit(false);
+
+            for (var statement : destroyQueueClientOnly(queueName)) {
+                connection.prepareStatement(statement).execute();
+            }
+            connection.commit();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

@@ -29,6 +29,8 @@ public class Main {
             pgmq.create("test");
             pgmq.createUnlogged("test2");
 
+            System.out.println(pgmq.listQueues().get());
+
             pgmq.destroy("test");
 
             System.out.println(pgmq.listQueues().get());
