@@ -1,10 +1,11 @@
 package io.tembo.pgmq;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public interface PGMQClient {
 
-    String PGMQ_SCHEMA = "pqmq";
+    String PGMQ_SCHEMA = "pgmq";
     String QUEUE_PREFIX = "q";
     String ARCHIVE_PREFIX = "a";
 
@@ -15,8 +16,8 @@ public interface PGMQClient {
             createQueue(queueName, isUnlogged),
             createIndex(queueName),
             createArchive(queueName),
-            createArchiveIndex(queueName)
-            //insertMeta(name, false, is_unlogged),
+            createArchiveIndex(queueName),
+            insertMeta(queueName, false, isUnlogged)
             //grantPgmonMeta(),
             //grantPgmonQueue(name)
         );
@@ -68,7 +69,7 @@ public interface PGMQClient {
     }
 
     default String createSchema() {
-        return "CREATE SCHEMA IF NOT EXISTS %s".formatted(PGMQ_SCHEMA);
+        return "CREATE SCHEMA IF NOT EXISTS %s;".formatted(PGMQ_SCHEMA);
     }
 
     default String createQueue(String queueName, boolean isUnlogged) {
@@ -120,4 +121,35 @@ public interface PGMQClient {
         );
     }
 
+    default String insertMeta(String queueName, boolean isPartitioned, boolean isUnlogged) {
+        return """
+        INSERT INTO %s.meta (queue_name, is_partitioned, is_unlogged)
+        VALUES ('%s', %s, %s)
+        ON CONFLICT
+        DO NOTHING;
+        """.formatted(
+                PGMQ_SCHEMA,
+                queueName,
+                isPartitioned,
+                isUnlogged
+        );
+    }
+
+    default String enqueue(String queueName, int messageCount, int delaySecond) {
+        StringJoiner sj = new StringJoiner(",");
+        for (int i = 1; i < messageCount + 1; i++) {
+            sj.add("((now() + interval '%s seconds'), ?::json)".formatted(delaySecond));
+        }
+
+        return """
+        INSERT INTO %s.%s_%s (vt, message)
+        VALUES %s
+        RETURNING msg_id;
+        """.formatted(
+                PGMQ_SCHEMA,
+                QUEUE_PREFIX,
+                queueName,
+                sj.toString()
+        );
+    }
 }

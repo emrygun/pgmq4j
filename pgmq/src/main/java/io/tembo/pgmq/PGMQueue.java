@@ -8,18 +8,21 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
-import static io.tembo.pgmq.statement.RawStatement.CREATE;
-import static io.tembo.pgmq.statement.RawStatement.CREATE_UNLOGGED;
+import static java.util.logging.Level.INFO;
 
 /**
  * Base class for interacting with a queue.
  */
 public class PGMQueue implements PGMQOperations {
+    private static final Logger LOG = Logger.getLogger(PGMQueue.class.getName());
+
     private final PGConnectionPoolDataSource pool;
 
     public PGMQueue(PGConnectionPoolDataSource pool) throws SQLException {
         this.pool = pool;
+        createExtensionIfNotPresent(pool.getConnection());
     }
 
     private void createExtensionIfNotPresent(Connection connection) throws SQLException {
@@ -30,14 +33,13 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public void create(String queueName) throws SQLException {
+        LOG.log(INFO, "Create queue with name %s".formatted(queueName));
         try {
             var connection = pool.getConnection();
-            connection.setAutoCommit(false);
-
             for (var statement : initQueueClientOnly(queueName, true)) {
+                LOG.log(INFO, "Create queue : Execute statement : %s".formatted(statement));
                 connection.prepareStatement(statement).execute();
             }
-            connection.commit();
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -77,7 +79,16 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public void send(String queueName, String message) {
+    public Integer send(String queueName, String message) {
+        try {
+            var statement = pool.getConnection().prepareStatement(enqueue(queueName, 1, 0));
+            statement.setString(1, message);
+            var result = statement.executeQuery();
+            result.next();
+            return result.getInt("msg_id");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

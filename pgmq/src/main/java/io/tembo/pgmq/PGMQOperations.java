@@ -29,7 +29,7 @@ interface PGMQOperations extends PGMQClient {
      */
     void destroy(String queueName);
 
-    void send(String queueName, String message);
+    Integer send(String queueName, String message);
 
     Optional<List<PGMQueueMetadata>> listQueues();
 

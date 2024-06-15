@@ -11,6 +11,7 @@
     <modules>
         <module>pgmq</module>
         <module>examples/basic</module>
+        <module>integration-test</module>
     </modules>
 
     <properties>
