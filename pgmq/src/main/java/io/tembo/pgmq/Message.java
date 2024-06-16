@@ -1,12 +1,11 @@
 package io.tembo.pgmq;
 
-import java.time.Duration;
 import java.time.Instant;
 
-public record Message<T> (
+public record Message (
     Integer messageId,
-    Integer readCt,
+    Integer readCount,
     Instant enqueuedAt,
-    Duration visibilityTime,
-    T message
+    Instant visibilityTime,
+    String message
 ) {}

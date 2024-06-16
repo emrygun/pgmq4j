@@ -21,7 +21,7 @@ interface PGMQOperations extends PGMQClient {
      * Example:
      * <pre>
      * {@code
-     * Set<String> s
+     * FIXME: Code example
      * }
      * </pre>
      *
@@ -33,5 +33,10 @@ interface PGMQOperations extends PGMQClient {
 
     Optional<List<PGMQueueMetadata>> listQueues();
 
+    Optional<Message> read(String queueName, int visibilityTime);
+
+    Optional<Message> read(String queueName);
     //FIXME: Other operations
+
+    Integer delete(String queueName, Integer messageId);
 }

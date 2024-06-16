@@ -111,4 +111,43 @@ public class PGMQueue implements PGMQOperations {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public Optional<Message> read(String queueName, int visibilityTime) {
+        try {
+            var query = read(queueName, visibilityTime, 1);
+            LOG.log(INFO, "Read queue : Execute statement : %s".formatted(query));
+            ResultSet resultSet = pool.getConnection().prepareStatement(query).executeQuery();
+            resultSet.next();
+            //FIXME: Message Wrapper
+            var message = new Message(
+                    resultSet.getInt("msg_id"),
+                    resultSet.getInt("read_ct"),
+                    resultSet.getTimestamp("enqueued_at").toInstant(),
+                    resultSet.getTimestamp("vt").toInstant(),
+                    resultSet.getString("message")
+            );
+
+            return Optional.of(message);
+        } catch (SQLException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<Message> read(String queueName) {
+        return read(queueName, 30);
+    }
+
+    @Override
+    public Integer delete(String queueName, Integer messageId) {
+        try {
+            var statement = pool.getConnection().prepareStatement(deleteBatch(queueName));
+            var array = pool.getConnection().createArrayOf("int", new Integer[] {messageId});
+            statement.setArray(1, array);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

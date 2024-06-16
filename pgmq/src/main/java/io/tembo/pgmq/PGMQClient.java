@@ -152,4 +152,56 @@ public interface PGMQClient {
                 sj.toString()
         );
     }
+
+    default String read(String queueName, int visibilityTimeSecond, int limit) {
+        return """
+        WITH cte AS
+            (
+                SELECT msg_id
+                FROM %s.%s_%s
+                WHERE vt <= clock_timestamp()
+                ORDER BY msg_id ASC
+                LIMIT %s
+                FOR UPDATE SKIP LOCKED
+            )
+        UPDATE %S.%s_%s t
+        SET
+            vt = clock_timestamp() + interval '%s seconds',
+            read_ct = read_ct + 1
+        FROM cte
+        WHERE t.msg_id=cte.msg_id
+        RETURNING *;
+        """.formatted(
+                PGMQ_SCHEMA,
+                QUEUE_PREFIX,
+                queueName,
+                limit,
+                PGMQ_SCHEMA,
+                QUEUE_PREFIX,
+                queueName,
+                visibilityTimeSecond
+        );
+    }
+
+    default String deleteBatch(String queueName) {
+        /*
+        return """
+        DELETE FROM %s.%s_%s
+        WHERE msg_id = ANY(?)
+        RETURNING msg_id;
+        """.formatted(
+                PGMQ_SCHEMA,
+                QUEUE_PREFIX,
+                queueName
+        );
+         */
+        return """
+        DELETE FROM %s.%s_%s
+        WHERE msg_id = ANY(?);
+        """.formatted(
+                PGMQ_SCHEMA,
+                QUEUE_PREFIX,
+                queueName
+        );
+    }
 }
