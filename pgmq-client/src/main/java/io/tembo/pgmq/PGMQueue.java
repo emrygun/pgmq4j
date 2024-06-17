@@ -2,6 +2,7 @@ package io.tembo.pgmq;
 
 import org.postgresql.ds.PGConnectionPoolDataSource;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import static io.tembo.pgmq.PGMQQuery.*;
 import static java.util.logging.Level.INFO;
 
 /**
@@ -113,19 +115,19 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Optional<Message> read(String queueName, int visibilityTime) {
+    public Optional<DefaultMessage> read(String queueName, int visibilityTime) {
         try {
-            var query = read(queueName, visibilityTime, 1);
+            var query = PGMQQuery.read(queueName, visibilityTime, 1);
             LOG.log(INFO, "Read queue : Execute statement : %s".formatted(query));
             ResultSet resultSet = pool.getConnection().prepareStatement(query).executeQuery();
             resultSet.next();
-            //FIXME: Message Wrapper
-            var message = new Message(
+            //FIXME: DefaultMessage Wrapper
+            var message = new DefaultMessage(
                     resultSet.getInt("msg_id"),
                     resultSet.getInt("read_ct"),
                     resultSet.getTimestamp("enqueued_at").toInstant(),
                     resultSet.getTimestamp("vt").toInstant(),
-                    resultSet.getString("message")
+                    resultSet.getString("message").getBytes(StandardCharsets.UTF_8)
             );
 
             return Optional.of(message);
@@ -135,7 +137,7 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Optional<Message> read(String queueName) {
+    public Optional<DefaultMessage> read(String queueName) {
         return read(queueName, 30);
     }
 

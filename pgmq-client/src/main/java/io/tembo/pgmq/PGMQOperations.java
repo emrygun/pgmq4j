@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
-interface PGMQOperations extends PGMQClient {
+interface PGMQOperations {
 
     //void new();
     //void newWithPool();
@@ -33,9 +33,9 @@ interface PGMQOperations extends PGMQClient {
 
     Optional<List<PGMQueueMetadata>> listQueues();
 
-    Optional<Message> read(String queueName, int visibilityTime);
+    Optional<DefaultMessage> read(String queueName, int visibilityTime);
 
-    Optional<Message> read(String queueName);
+    Optional<DefaultMessage> read(String queueName);
     //FIXME: Other operations
 
     Integer delete(String queueName, Integer messageId);

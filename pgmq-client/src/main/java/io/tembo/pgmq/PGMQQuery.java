@@ -3,13 +3,13 @@ package io.tembo.pgmq;
 import java.util.List;
 import java.util.StringJoiner;
 
-public interface PGMQClient {
+class PGMQQuery {
 
-    String PGMQ_SCHEMA = "pgmq";
-    String QUEUE_PREFIX = "q";
-    String ARCHIVE_PREFIX = "a";
+    static final String PGMQ_SCHEMA = "pgmq";
+    static final String QUEUE_PREFIX = "q";
+    static final String ARCHIVE_PREFIX = "a";
 
-    default List<String> initQueueClientOnly(String queueName, boolean isUnlogged) {
+    public static List<String> initQueueClientOnly(String queueName, boolean isUnlogged) {
         return List.of(
             createSchema(),
             createMeta(),
@@ -23,7 +23,7 @@ public interface PGMQClient {
         );
     }
 
-    default List<String> destroyQueueClientOnly(String queueName) {
+    public static List<String> destroyQueueClientOnly(String queueName) {
         return List.of(
                 createSchema(),
                 dropQueue(queueName),
@@ -32,7 +32,7 @@ public interface PGMQClient {
         );
     }
 
-    default String deleteQueueMetadata(String queueName) {
+    public static String deleteQueueMetadata(String queueName) {
         return """
         DO $$
         BEGIN
@@ -49,15 +49,15 @@ public interface PGMQClient {
         """.formatted(PGMQ_SCHEMA, queueName);
     }
 
-    default String dropQueueArchive(String queueName) {
+    public static String dropQueueArchive(String queueName) {
         return "DROP TABLE IF EXISTS %s.%s_%s;".formatted(PGMQ_SCHEMA, ARCHIVE_PREFIX, queueName);
     }
 
-    default String dropQueue(String queueName) {
+    public static String dropQueue(String queueName) {
         return "DROP TABLE IF EXISTS %s.%s_%s;".formatted(PGMQ_SCHEMA, QUEUE_PREFIX, queueName);
     }
 
-    default String createMeta() {
+    public static String createMeta() {
         return """
         CREATE TABLE IF NOT EXISTS %s.meta (
                 queue_name VARCHAR UNIQUE NOT NULL,
@@ -68,11 +68,11 @@ public interface PGMQClient {
         """.formatted(PGMQ_SCHEMA);
     }
 
-    default String createSchema() {
+    public static String createSchema() {
         return "CREATE SCHEMA IF NOT EXISTS %s;".formatted(PGMQ_SCHEMA);
     }
 
-    default String createQueue(String queueName, boolean isUnlogged) {
+    public static String createQueue(String queueName, boolean isUnlogged) {
         return """
         CREATE %s TABLE IF NOT EXISTS %s.%s_%s (
             msg_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -90,7 +90,7 @@ public interface PGMQClient {
     }
 
     // indexes are created ascending to support FIFO
-    default String createIndex(String queueName) {
+    public static String createIndex(String queueName) {
         return "CREATE INDEX IF NOT EXISTS %s_%s_vt_idx ON %s.%s_%s (vt ASC);".formatted(
                 QUEUE_PREFIX,
                 queueName,
@@ -99,7 +99,7 @@ public interface PGMQClient {
                 queueName);
     }
 
-    default String createArchive(String queueName) {
+    public static String createArchive(String queueName) {
         return """
         CREATE TABLE IF NOT EXISTS %s.%s_%s (
             msg_id BIGINT PRIMARY KEY,
@@ -112,7 +112,7 @@ public interface PGMQClient {
         """.formatted(PGMQ_SCHEMA, ARCHIVE_PREFIX, queueName);
     }
 
-    default String createArchiveIndex(String queueName) {
+    public static String createArchiveIndex(String queueName) {
         return "CREATE INDEX IF NOT EXISTS archived_at_idx_%s ON %s.%s_%s (archived_at);".formatted(
                 queueName,
                 PGMQ_SCHEMA,
@@ -121,7 +121,7 @@ public interface PGMQClient {
         );
     }
 
-    default String insertMeta(String queueName, boolean isPartitioned, boolean isUnlogged) {
+    public static String insertMeta(String queueName, boolean isPartitioned, boolean isUnlogged) {
         return """
         INSERT INTO %s.meta (queue_name, is_partitioned, is_unlogged)
         VALUES ('%s', %s, %s)
@@ -135,7 +135,7 @@ public interface PGMQClient {
         );
     }
 
-    default String enqueue(String queueName, int messageCount, int delaySecond) {
+    public static String enqueue(String queueName, int messageCount, int delaySecond) {
         StringJoiner sj = new StringJoiner(",");
         for (int i = 1; i < messageCount + 1; i++) {
             sj.add("((now() + interval '%s seconds'), ?::json)".formatted(delaySecond));
@@ -153,7 +153,7 @@ public interface PGMQClient {
         );
     }
 
-    default String read(String queueName, int visibilityTimeSecond, int limit) {
+    public static String read(String queueName, int visibilityTimeSecond, int limit) {
         return """
         WITH cte AS
             (
@@ -183,7 +183,7 @@ public interface PGMQClient {
         );
     }
 
-    default String deleteBatch(String queueName) {
+    public static String deleteBatch(String queueName) {
         /*
         return """
         DELETE FROM %s.%s_%s
