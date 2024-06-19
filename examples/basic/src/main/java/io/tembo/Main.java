@@ -1,7 +1,8 @@
 package io.tembo;
 
 import ch.qos.logback.classic.LoggerContext;
-import io.tembo.pgmq.PGMQueue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.tembo.pgmq.PGMQueueFactory;
 import org.postgresql.ds.PGConnectionPoolDataSource;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -12,6 +13,7 @@ import java.sql.SQLException;
 import static ch.qos.logback.classic.Level.INFO;
 
 public class Main {
+
     private static final DockerImageName dockerImageName = DockerImageName
             .parse("quay.io/tembo/pg16-pgmq:latest")
             .asCompatibleSubstituteFor("postgres");
@@ -44,21 +46,23 @@ public class Main {
         Integer BATCH_SIZE = 3;
 
         try {
-            var pgmq = new PGMQueue(dataSource, null);
+            var objectMapper = new ObjectMapper();
+            var jsonSerializer = new SimpleJacksonJsonSerializer(objectMapper);
 
-            pgmq.create(QUEUE_BASIC);
+            var pgmqFactory = new PGMQueueFactory(jsonSerializer, dataSource);
+            var basicQueue = pgmqFactory.create(QUEUE_BASIC);
 
             //language=json
             String jsonMessage = """
             { "foo": "bar" }
             """;
 
-            pgmq.send(QUEUE_BASIC, jsonMessage);
-            var message = pgmq.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC).get();
+            basicQueue.send(QUEUE_BASIC, jsonMessage);
+            var message = basicQueue.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC).get();
             System.out.println(message.getMessageId());
 
-            pgmq.delete(QUEUE_BASIC, message.getMessageId());
-            System.out.println(pgmq.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC));
+            basicQueue.delete(QUEUE_BASIC, message.getMessageId());
+            System.out.println(basicQueue.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC));
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
