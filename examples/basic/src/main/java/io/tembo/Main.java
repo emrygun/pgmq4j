@@ -1,42 +1,14 @@
 package io.tembo;
 
-import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tembo.pgmq.PGMQueueFactory;
-import org.postgresql.ds.PGConnectionPoolDataSource;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.sql.SQLException;
 
-import static ch.qos.logback.classic.Level.INFO;
+import static io.tembo.DatabaseUtils.dataSource;
+import static io.tembo.DatabaseUtils.postgresContainer;
 
 public class Main {
-
-    private static final DockerImageName dockerImageName = DockerImageName
-            .parse("quay.io/tembo/pg16-pgmq:latest")
-            .asCompatibleSubstituteFor("postgres");
-
-    private static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(dockerImageName)
-            .withDatabaseName("test")
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .withExposedPorts(5432);
-
-    private static final PGConnectionPoolDataSource dataSource = new PGConnectionPoolDataSource();
-
-    static {
-        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-        loggerContext.getLogger("ROOT").setLevel(INFO);
-        // loggerContext.getLogger("io.tembo").setLevel(TRACE);
-
-        dataSource.setDatabaseName("postgres");
-        dataSource.setUser("postgres");
-        dataSource.setPassword("postgres");
-        dataSource.setPortNumbers(new int[] {5432});
-    }
-
     public static void main(String[] args) {
         postgresContainer.start();
         dataSource.setURL(postgresContainer.getJdbcUrl());
@@ -57,12 +29,12 @@ public class Main {
             { "foo": "bar" }
             """;
 
-            basicQueue.send(QUEUE_BASIC, jsonMessage);
-            var message = basicQueue.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC).get();
+            basicQueue.send(jsonMessage);
+            var message = basicQueue.read(VISIBILITY_TIMEOUT_SEC).get();
             System.out.println(message.getMessageId());
 
-            basicQueue.delete(QUEUE_BASIC, message.getMessageId());
-            System.out.println(basicQueue.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC));
+            basicQueue.delete(message.getMessageId());
+            System.out.println(basicQueue.read(VISIBILITY_TIMEOUT_SEC));
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());

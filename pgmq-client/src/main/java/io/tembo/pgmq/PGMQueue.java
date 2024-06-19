@@ -17,14 +17,18 @@ import java.util.logging.Logger;
 public class PGMQueue implements PGMQOperations {
     private static final Logger LOG = Logger.getLogger(PGMQueue.class.getName());
 
-    private final PGConnectionPoolDataSource pool;
-    private final JsonSerializer jsonSerializer;
+    private final String queueName;
     private final PGMQClient client;
 
-    PGMQueue(ExtensionContext context) throws SQLException {
+    private final PGConnectionPoolDataSource pool;
+    private final JsonSerializer jsonSerializer;
+
+
+    PGMQueue(String queueName, ExtensionContext context) throws SQLException {
+        this.queueName = queueName;
         this.pool = context.getPoolDataSource();
         this.jsonSerializer = context.getSerializer();
-        this.client = new PGMQClient((PgConnection) pool.getConnection());
+        this.client = new DefaultPGMQClient((PgConnection) pool.getConnection());
 
         createExtensionIfNotPresent(pool.getConnection());
     }
@@ -36,32 +40,32 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public void create(String queueName) throws SQLException {
+    public void create() throws SQLException {
         client.create(queueName);
     }
 
     @Override
-    public void createUnlogged(String queueName) throws SQLException {
+    public void createUnlogged() throws SQLException {
         client.createUnlogged(queueName);
     }
 
     @Override
-    public void destroy(String queueName) {
+    public void destroy() {
         client.destroy(queueName);
     }
 
     @Override
-    public Integer send(String queueName, String message) {
-        return sendDelay(queueName, message, 0);
+    public Integer send(String message) {
+        return sendDelay(message, 0);
     }
 
     @Override
-    public Integer sendDelay(String queueName, String message, int delaySec) {
+    public Integer sendDelay(String message, int delaySec) {
         return client.sendDelay(queueName, message, delaySec);
     }
 
     @Override
-    public List<Integer> sendBatch(String queueName, List<String> messages) {
+    public List<Integer> sendBatch(List<String> messages) {
         return client.sendBatch(queueName, messages);
     }
 
@@ -71,58 +75,62 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Optional<DefaultMessage> read(String queueName, int visibilityTime) {
+    public Optional<DefaultMessage> read(int visibilityTime) {
         return client.read(queueName, visibilityTime);
     }
 
     @Override
-    public Optional<DefaultMessage> read(String queueName) {
-        return read(queueName, 30);
+    public Optional<DefaultMessage> read() {
+        return read(30);
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatch(String queueName, int visibilityTime, int messageCount) {
+    public Optional<List<DefaultMessage>> readBatch(int visibilityTime, int messageCount) {
         return client.readBatch(queueName, visibilityTime, messageCount);
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+    public Optional<List<DefaultMessage>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
         return Optional.empty();
     }
 
     @Override
-    public Integer delete(String queueName, int messageId) {
+    public Integer delete(int messageId) {
         return client.delete(queueName, messageId);
     }
 
     @Override
-    public Integer deleteBatch(String queueName, int[] messageIds) {
+    public Integer deleteBatch(int[] messageIds) {
         return client.deleteBatch(queueName, messageIds);
     }
 
     @Override
-    public Integer purge(String queueName) {
+    public Integer purge() {
         return client.purge(queueName);
     }
 
     @Override
-    public Integer archive(String queueName, int messageId) {
-        return archiveBatch(queueName, new int[] {messageId});
+    public Integer archive(int messageId) {
+        return archiveBatch(new int[] {messageId});
     }
 
     @Override
-    public Integer archiveBatch(String queueName, int[] messageIds) {
+    public Integer archiveBatch(int[] messageIds) {
         return client.archiveBatch(queueName, messageIds);
     }
 
     @Override
-    public Optional<Message> pop(String queueName) {
+    public Optional<Message> pop() {
         return client.pop(queueName);
     }
 
     @Override
-    public Optional<Message> setVisibilityTimeout(String queueName, int messageId, Instant visibilityTimeout) {
+    public Optional<Message> setVisibilityTimeout(int messageId, Instant visibilityTimeout) {
         return null; //FIXME: Implementation is missing
+    }
+
+    public String getQueueName() {
+        return queueName;
     }
 }
