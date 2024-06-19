@@ -2,9 +2,14 @@ package io.tembo.pgmq;
 
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * FIXME: Rust implementasyonunda read_with_pool yok :/
+ */
 interface PGMQOperations {
 
     //void new();
@@ -31,12 +36,38 @@ interface PGMQOperations {
 
     Integer send(String queueName, String message);
 
-    Optional<List<PGMQueueMetadata>> listQueues();
+    Integer sendDelay(String queueName, String message, int delaySec);
+
+    List<Integer> sendBatch(String queueName, List<String> messages);
+
 
     Optional<DefaultMessage> read(String queueName, int visibilityTime);
 
     Optional<DefaultMessage> read(String queueName);
-    //FIXME: Other operations
 
-    Integer delete(String queueName, Integer messageId);
+    Optional<List<DefaultMessage>> readBatch(String queueName, int visibilityTime, int messageCount);
+
+    Optional<List<DefaultMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
+
+
+    Integer delete(String queueName, int messageId);
+
+    Integer deleteBatch(String queueName, int[] messageIds);
+
+
+    Integer purge(String queueName);
+
+
+    Integer archive(String queueName, int messageId);
+
+    Integer archiveBatch(String queueName, int[] messageIds);
+
+
+    Optional<Message> pop(String queueName);
+
+
+    Optional<Message> setVisibilityTimeout(String queueName, int messageId, Instant visibilityTimeout);
+
+
+    Optional<List<PGMQueueMetadata>> listQueues();
 }

@@ -3,7 +3,7 @@ package io.tembo.pgmq;
 import java.util.List;
 import java.util.StringJoiner;
 
-class PGMQQuery {
+final class PGMQQuery {
 
     static final String PGMQ_SCHEMA = "pgmq";
     static final String QUEUE_PREFIX = "q";
@@ -121,6 +121,20 @@ class PGMQQuery {
         );
     }
 
+    public static String archiveBatch(String queueName) {
+        return """
+        WITH archived AS (
+            DELETE FROM %s.%s_%s
+            WHERE msg_id = ANY(?)
+            RETURNING msg_id, vt, read_ct, enqueued_at, message
+        )
+        INSERT INTO %s.%s_%s (msg_id, vt, read_ct, enqueued_at, message)
+        SELECT msg_id, vt, read_ct, enqueued_at, message
+        FROM archived
+        RETURNING msg_id;
+        """.formatted(PGMQ_SCHEMA, QUEUE_PREFIX, queueName, PGMQ_SCHEMA, ARCHIVE_PREFIX, queueName);
+    }
+
     public static String insertMeta(String queueName, boolean isPartitioned, boolean isUnlogged) {
         return """
         INSERT INTO %s.meta (queue_name, is_partitioned, is_unlogged)
@@ -203,5 +217,26 @@ class PGMQQuery {
                 QUEUE_PREFIX,
                 queueName
         );
+    }
+
+    public static String purge(String queueName) {
+        return "DELETE FROM %s.%s_%s;".formatted(PGMQ_SCHEMA, QUEUE_PREFIX, queueName);
+    }
+
+    public static String pop(String queueName) {
+        return """
+        WITH cte AS
+            (
+                SELECT msg_id
+                FROM %s.%s_%s
+                WHERE vt <= now()
+                ORDER BY msg_id ASC
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            )
+        DELETE from %s.%s_%s
+        WHERE msg_id = (select msg_id from cte)
+        RETURNING *;
+        """.formatted(PGMQ_SCHEMA, QUEUE_PREFIX, queueName, PGMQ_SCHEMA, QUEUE_PREFIX, queueName);
     }
 }

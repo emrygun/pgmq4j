@@ -44,7 +44,7 @@ public class Main {
         Integer BATCH_SIZE = 3;
 
         try {
-            var pgmq = new PGMQueue(dataSource);
+            var pgmq = new PGMQueue(dataSource, null);
 
             pgmq.create(QUEUE_BASIC);
 
@@ -55,9 +55,9 @@ public class Main {
 
             pgmq.send(QUEUE_BASIC, jsonMessage);
             var message = pgmq.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC).get();
-            System.out.println(message);
+            System.out.println(message.getMessageId());
 
-            pgmq.delete(QUEUE_BASIC, message.messageId());
+            pgmq.delete(QUEUE_BASIC, message.getMessageId());
             System.out.println(pgmq.read(QUEUE_BASIC, VISIBILITY_TIMEOUT_SEC));
 
         } catch (SQLException e) {

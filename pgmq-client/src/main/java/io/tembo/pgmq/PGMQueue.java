@@ -6,7 +6,10 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -21,9 +24,12 @@ public class PGMQueue implements PGMQOperations {
     private static final Logger LOG = Logger.getLogger(PGMQueue.class.getName());
 
     private final PGConnectionPoolDataSource pool;
+    private final JsonSerializer jsonSerializer;
 
-    public PGMQueue(PGConnectionPoolDataSource pool) throws SQLException {
-        this.pool = pool;
+    PGMQueue(ExtensionContext context) throws SQLException {
+        this.pool = context.getPoolDataSource();
+        this.jsonSerializer = context.getSerializer();
+
         createExtensionIfNotPresent(pool.getConnection());
     }
 
@@ -82,12 +88,39 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public Integer send(String queueName, String message) {
+        return sendDelay(queueName, message, 0);
+    }
+
+    @Override
+    public Integer sendDelay(String queueName, String message, int delaySec) {
         try {
-            var statement = pool.getConnection().prepareStatement(enqueue(queueName, 1, 0));
+            var statement = pool.getConnection().prepareStatement(enqueue(queueName, 1, delaySec));
             statement.setString(1, message);
             var result = statement.executeQuery();
             result.next();
             return result.getInt("msg_id");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public List<Integer> sendBatch(String queueName, List<String> messages) {
+        try {
+            var statement = pool.getConnection().prepareStatement(enqueue(queueName, messages.size(), 0));
+
+            for (int i = 1; i < messages.size() + 1; i++) {
+                statement.setString(i, messages.get(i - 1));
+            }
+            var result = statement.executeQuery();
+
+            List<Integer> messageIds = new ArrayList<>();
+            for (int i = 0; i < messages.size(); i++) {
+                result.next();
+                messageIds.add(result.getInt("msg_id"));
+            }
+
+            return messageIds;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -142,12 +175,105 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Integer delete(String queueName, Integer messageId) {
+    public Optional<List<DefaultMessage>> readBatch(String queueName, int visibilityTime, int messageCount) {
         try {
-            var statement = pool.getConnection().prepareStatement(deleteBatch(queueName));
+            var query = PGMQQuery.read(queueName, visibilityTime, messageCount);
+            ResultSet resultSet = pool.getConnection().prepareStatement(query).executeQuery();
+
+            List<DefaultMessage> messages = new ArrayList<>();
+            while (resultSet.next()) {
+                var message = toMessage(resultSet);
+                messages.add(message);
+            }
+            return Optional.of(messages);
+        } catch (SQLException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<List<DefaultMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+        //FIXME: Implementation
+        return Optional.empty();
+    }
+
+    @Override
+    public Integer delete(String queueName, int messageId) {
+        try {
+            var statement = pool.getConnection().prepareStatement(PGMQQuery.deleteBatch(queueName));
             var array = pool.getConnection().createArrayOf("int", new Integer[] {messageId});
             statement.setArray(1, array);
             return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Integer deleteBatch(String queueName, int[] messageIds) {
+        try {
+            var statement = pool.getConnection().prepareStatement(PGMQQuery.deleteBatch(queueName));
+            var array = pool.getConnection().createArrayOf("int", Arrays.stream(messageIds).boxed().toArray(Integer[]::new));
+            statement.setArray(1, array);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Integer purge(String queueName) {
+        try {
+            return pool.getConnection().prepareStatement(PGMQQuery.purge(queueName)).executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Integer archive(String queueName, int messageId) {
+        return archiveBatch(queueName, new int[] {messageId});
+    }
+
+    @Override
+    public Integer archiveBatch(String queueName, int[] messageIds) {
+        try {
+            var statement = pool.getConnection().prepareStatement(PGMQQuery.archiveBatch(queueName));
+            var array = pool.getConnection().createArrayOf("int", Arrays.stream(messageIds).boxed().toArray(Integer[]::new));
+            statement.setArray(1, array);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Optional<Message> pop(String queueName) {
+        try {
+            var query = PGMQQuery.pop(queueName);
+            ResultSet resultSet = pool.getConnection().prepareStatement(query).executeQuery();
+            resultSet.next();
+            return Optional.of(toMessage(resultSet));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Optional<Message> setVisibilityTimeout(String queueName, int messageId, Instant visibilityTimeout) {
+        //FIXME: Implementation is missing
+        return null;
+    }
+
+    private static DefaultMessage toMessage(ResultSet resultSet) {
+        try {
+            return new DefaultMessage(
+                    resultSet.getInt("msg_id"),
+                    resultSet.getInt("read_ct"),
+                    resultSet.getTimestamp("enqueued_at").toInstant(),
+                    resultSet.getTimestamp("vt").toInstant(),
+                    resultSet.getString("message").getBytes(StandardCharsets.UTF_8)
+            );
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

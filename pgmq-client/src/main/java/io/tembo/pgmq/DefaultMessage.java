@@ -4,16 +4,14 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 
-class DefaultMessage implements Message {
-    private static final byte[] EMPTY = new byte[0];
-
+public class DefaultMessage implements Message {
     private final Integer messageId;
     private final Integer readCount;
     private final Instant enqueuedAt;
     private final Instant visibilityTime;
     private final byte[] message;
 
-    public DefaultMessage(Integer messageId, Integer readCount, Instant enqueuedAt, Instant visibilityTime, byte[] message) {
+    DefaultMessage(Integer messageId, Integer readCount, Instant enqueuedAt, Instant visibilityTime, byte[] message) {
         this.messageId = messageId;
         this.readCount = readCount;
         this.enqueuedAt = enqueuedAt;
@@ -51,7 +49,11 @@ class DefaultMessage implements Message {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DefaultMessage that = (DefaultMessage) o;
-        return Objects.equals(messageId, that.messageId) && Objects.equals(readCount, that.readCount) && Objects.equals(enqueuedAt, that.enqueuedAt) && Objects.equals(visibilityTime, that.visibilityTime) && Arrays.equals(message, that.message);
+        return Objects.equals(messageId, that.messageId) &&
+                Objects.equals(readCount, that.readCount) &&
+                Objects.equals(enqueuedAt, that.enqueuedAt) &&
+                Objects.equals(visibilityTime, that.visibilityTime) &&
+                Arrays.equals(message, that.message);
     }
 
     @Override
