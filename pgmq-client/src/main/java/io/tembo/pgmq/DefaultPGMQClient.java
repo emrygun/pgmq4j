@@ -14,6 +14,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import static io.tembo.pgmq.ClientErrorFactory.archiveError;
+import static io.tembo.pgmq.ClientErrorFactory.createQueueError;
+import static io.tembo.pgmq.ClientErrorFactory.deleteMessageError;
+import static io.tembo.pgmq.ClientErrorFactory.destroyQueueError;
+import static io.tembo.pgmq.ClientErrorFactory.listQueuesError;
+import static io.tembo.pgmq.ClientErrorFactory.popError;
+import static io.tembo.pgmq.ClientErrorFactory.purgeError;
+import static io.tembo.pgmq.ClientErrorFactory.readMessageError;
+import static io.tembo.pgmq.ClientErrorFactory.sendMessageError;
 import static io.tembo.pgmq.PGMQQuery.destroyQueueClientOnly;
 import static io.tembo.pgmq.PGMQQuery.enqueue;
 import static io.tembo.pgmq.PGMQQuery.initQueueClientOnly;
@@ -21,7 +30,7 @@ import static java.util.logging.Level.INFO;
 
 /**
  * Core client of the pgmq transactions.
- * Contains low level database transactions of pgmq over postgresql connection
+ * Contains low level database transactions of pgmq over postgresql connection.
  *
  * @see PGMQQuery
  * @see PGMQueue
@@ -43,21 +52,20 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public void create(String queueName) throws SQLException {
+    public void create(String queueName) {
         LOG.log(INFO, "Create queue with name %s".formatted(queueName));
         try {
             for (var statement : initQueueClientOnly(queueName, true)) {
                 LOG.log(INFO, "Create queue : Execute statement : %s".formatted(statement));
                 connection.prepareStatement(statement).execute();
             }
-
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw createQueueError(queueName, true, e);
         }
     }
 
     @Override
-    public void createUnlogged(String queueName) throws SQLException {
+    public void createUnlogged(String queueName) {
         try {
             connection.setAutoCommit(false);
 
@@ -67,7 +75,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             connection.commit();
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw createQueueError(queueName, false, e);
         }
     }
 
@@ -82,7 +90,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             connection.commit();
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw destroyQueueError(queueName, e);
         }
     }
 
@@ -100,7 +108,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             result.next();
             return result.getInt("msg_id");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw sendMessageError(delaySec, 1, e);
         }
     }
 
@@ -122,7 +130,7 @@ public final class DefaultPGMQClient implements PGMQClient {
 
             return messageIds;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw sendMessageError(0, messages.size(), e);
         }
     }
 
@@ -143,44 +151,39 @@ public final class DefaultPGMQClient implements PGMQClient {
 
             return Optional.of(list);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw listQueuesError(e);
         }
     }
 
     @Override
-    public Optional<DefaultMessage> read(String queueName, int visibilityTime) {
+    public Optional<Message> read(String queueName, int visibilityTime) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, 1);
             LOG.log(INFO, "Read queue : Execute statement : %s".formatted(query));
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
-            resultSet.next();
-            //FIXME: DefaultMessage Wrapper
-            var message = new DefaultMessage(
-                    resultSet.getInt("msg_id"),
-                    resultSet.getInt("read_ct"),
-                    resultSet.getTimestamp("enqueued_at").toInstant(),
-                    resultSet.getTimestamp("vt").toInstant(),
-                    resultSet.getString("message").getBytes(StandardCharsets.UTF_8)
-            );
-
-            return Optional.of(message);
+            if (resultSet.next()) {
+                var message = toMessage(resultSet);
+                return Optional.of(message);
+            } else {
+                return Optional.empty();
+            }
         } catch (SQLException e) {
-            return Optional.empty();
+            throw readMessageError(queueName, visibilityTime, 1, e);
         }
     }
 
     @Override
-    public Optional<DefaultMessage> read(String queueName) {
+    public Optional<Message> read(String queueName) {
         return read(queueName, 30);
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatch(String queueName, int visibilityTime, int messageCount) {
+    public Optional<List<Message>> readBatch(String queueName, int visibilityTime, int messageCount) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, messageCount);
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
 
-            List<DefaultMessage> messages = new ArrayList<>();
+            List<Message> messages = new ArrayList<>();
             while (resultSet.next()) {
                 var message = toMessage(resultSet);
                 messages.add(message);
@@ -192,7 +195,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+    public Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
         return Optional.empty();
     }
@@ -205,7 +208,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw deleteMessageError(e);
         }
     }
 
@@ -217,7 +220,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw deleteMessageError(e);
         }
     }
 
@@ -226,7 +229,7 @@ public final class DefaultPGMQClient implements PGMQClient {
         try {
             return connection.prepareStatement(PGMQQuery.purge(queueName)).executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw purgeError(queueName, e);
         }
     }
 
@@ -243,7 +246,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw archiveError(queueName, e);
         }
     }
 
@@ -255,7 +258,7 @@ public final class DefaultPGMQClient implements PGMQClient {
             resultSet.next();
             return Optional.of(toMessage(resultSet));
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw popError(queueName, e);
         }
     }
 

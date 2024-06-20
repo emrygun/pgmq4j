@@ -1,7 +1,6 @@
 package io.tembo.pgmq;
 
 
-import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -12,12 +11,10 @@ import java.util.Optional;
  */
 interface PGMQOperations {
 
-    //void new();
-    //void newWithPool();
 
-    void create() throws SQLException;
+    void create() ;
 
-    void createUnlogged() throws SQLException;
+    void createUnlogged() ;
 
     /**
      * Destroy a queue. This deletes the queue's tables, indexes and metadata.
@@ -33,33 +30,33 @@ interface PGMQOperations {
      */
     void destroy();
 
-    Integer send(String message);
+    MessageId send(String message);
 
-    Integer sendDelay(String message, int delaySec);
+    MessageId sendDelay(String message, int delaySec);
 
     List<Integer> sendBatch(List<String> messages);
 
 
-    Optional<DefaultMessage> read(int visibilityTime);
+    Optional<Message> read(int visibilityTime);
 
-    Optional<DefaultMessage> read();
+    Optional<Message> read();
 
-    Optional<List<DefaultMessage>> readBatch(int visibilityTime, int messageCount);
+    Optional<List<Message>> readBatch(int visibilityTime, int messageCount);
 
-    Optional<List<DefaultMessage>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
-
-
-    Integer delete(int messageId);
-
-    Integer deleteBatch(int[] messageIds);
+    Optional<List<Message>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
 
 
-    Integer purge();
+    MessageId delete(MessageId messageId);
+
+    MessageId deleteBatch(MessageId[] messageIds);
 
 
-    Integer archive(int messageId);
+    MessageId purge();
 
-    Integer archiveBatch(int[] messageIds);
+
+    MessageId archive(MessageId messageId);
+
+    MessageId archiveBatch(MessageId[] messageIds);
 
 
     Optional<Message> pop();

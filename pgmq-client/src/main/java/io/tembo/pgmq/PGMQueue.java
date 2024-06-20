@@ -40,12 +40,12 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public void create() throws SQLException {
+    public void create() {
         client.create(queueName);
     }
 
     @Override
-    public void createUnlogged() throws SQLException {
+    public void createUnlogged() {
         client.createUnlogged(queueName);
     }
 
@@ -55,17 +55,17 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Integer send(String message) {
+    public MessageId send(String message) {
         return sendDelay(message, 0);
     }
 
     @Override
-    public Integer sendDelay(String message, int delaySec) {
+    public MessageId sendDelay(String message, int delaySec) {
         return client.sendDelay(queueName, message, delaySec);
     }
 
     @Override
-    public List<Integer> sendBatch(List<String> messages) {
+    public List<MessageId> sendBatch(List<String> messages) {
         return client.sendBatch(queueName, messages);
     }
 
@@ -75,48 +75,48 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Optional<DefaultMessage> read(int visibilityTime) {
+    public Optional<Message> read(int visibilityTime) {
         return client.read(queueName, visibilityTime);
     }
 
     @Override
-    public Optional<DefaultMessage> read() {
+    public Optional<Message> read() {
         return read(30);
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatch(int visibilityTime, int messageCount) {
+    public Optional<List<Message>> readBatch(int visibilityTime, int messageCount) {
         return client.readBatch(queueName, visibilityTime, messageCount);
     }
 
     @Override
-    public Optional<List<DefaultMessage>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+    public Optional<List<Message>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
         return Optional.empty();
     }
 
     @Override
-    public Integer delete(int messageId) {
+    public MessageId delete(MessageId messageId) {
         return client.delete(queueName, messageId);
     }
 
     @Override
-    public Integer deleteBatch(int[] messageIds) {
+    public MessageId deleteBatch(MessageId[] messageIds) {
         return client.deleteBatch(queueName, messageIds);
     }
 
     @Override
-    public Integer purge() {
+    public MessageId purge() {
         return client.purge(queueName);
     }
 
     @Override
-    public Integer archive(int messageId) {
+    public MessageId archive(int messageId) {
         return archiveBatch(new int[] {messageId});
     }
 
     @Override
-    public Integer archiveBatch(int[] messageIds) {
+    public MessageId archiveBatch(MessageId[] messageIds) {
         return client.archiveBatch(queueName, messageIds);
     }
 

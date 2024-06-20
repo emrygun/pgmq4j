@@ -8,12 +8,11 @@ public class PGMQueueFactory {
     private final ExtensionContext context;
 
     /**
-     * <p>
      * There is no default serializer option. <br>
      * So you have to bring your own object serializer ¯\_(ツ)_/¯
-     * </p>
-     * @param serializer
-     * @param dataSource
+     *
+     * @param serializer JsonSerializer instance for pgmq
+     * @param dataSource Pool datasource. Bring your own pool
      */
     public PGMQueueFactory(JsonSerializer serializer, PGConnectionPoolDataSource dataSource) {
         this.context = new ExtensionContext(serializer, dataSource);
@@ -25,7 +24,14 @@ public class PGMQueueFactory {
 
     public PGMQueue create(String queueName, boolean logged) {
         try {
-            return new PGMQueue(context);
+            var queue = new PGMQueue(queueName, context);
+            if (logged) {
+                queue.create();
+            } else {
+                queue.createUnlogged();
+            }
+
+            return queue;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

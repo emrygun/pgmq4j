@@ -3,7 +3,7 @@ package io.tembo.pgmq;
 import java.time.Instant;
 
 public interface Message {
-    Integer getMessageId();
+    MessageId getMessageId();
 
     Integer getReadCount();
 

@@ -3,8 +3,6 @@ package io.tembo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.tembo.pgmq.PGMQueueFactory;
 
-import java.sql.SQLException;
-
 import static io.tembo.DatabaseUtils.dataSource;
 import static io.tembo.DatabaseUtils.postgresContainer;
 
@@ -17,28 +15,24 @@ public class Main {
         Integer VISIBILITY_TIMEOUT_SEC = 30;
         Integer BATCH_SIZE = 3;
 
-        try {
-            var objectMapper = new ObjectMapper();
-            var jsonSerializer = new SimpleJacksonJsonSerializer(objectMapper);
+        var objectMapper = new ObjectMapper();
+        var jsonSerializer = new SimpleJacksonJsonSerializer(objectMapper);
 
-            var pgmqFactory = new PGMQueueFactory(jsonSerializer, dataSource);
-            var basicQueue = pgmqFactory.create(QUEUE_BASIC);
+        // Initialize pgmq instance
+        var pgmqFactory = new PGMQueueFactory(jsonSerializer, dataSource);
+        var basicQueue = pgmqFactory.create(QUEUE_BASIC);
 
-            //language=json
-            String jsonMessage = """
-            { "foo": "bar" }
-            """;
+        //language=json
+        String jsonMessage = """
+        { "foo": "bar" }
+        """;
 
-            basicQueue.send(jsonMessage);
-            var message = basicQueue.read(VISIBILITY_TIMEOUT_SEC).get();
-            System.out.println(message.getMessageId());
+        basicQueue.send(jsonMessage);
+        var message = basicQueue.read(VISIBILITY_TIMEOUT_SEC).get();
+        System.out.println(message.getMessageId());
 
-            basicQueue.delete(message.getMessageId());
-            System.out.println(basicQueue.read(VISIBILITY_TIMEOUT_SEC));
-
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
+        basicQueue.delete(message.getMessageId());
+        System.out.println(basicQueue.read(VISIBILITY_TIMEOUT_SEC));
 
         postgresContainer.stop();
     }
