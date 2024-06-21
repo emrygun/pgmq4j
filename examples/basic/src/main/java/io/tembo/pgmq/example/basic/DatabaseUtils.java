@@ -1,4 +1,4 @@
-package io.tembo;
+package io.tembo.pgmq.example.basic;
 
 import ch.qos.logback.classic.LoggerContext;
 import org.postgresql.ds.PGConnectionPoolDataSource;
@@ -7,6 +7,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import static ch.qos.logback.classic.Level.INFO;
+import static ch.qos.logback.classic.Level.TRACE;
 
 public class DatabaseUtils {
     public static final DockerImageName dockerImageName = DockerImageName
@@ -24,12 +25,11 @@ public class DatabaseUtils {
     static {
         LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         loggerContext.getLogger("ROOT").setLevel(INFO);
-        // loggerContext.getLogger("io.tembo").setLevel(TRACE);
+        loggerContext.getLogger("io.tembo.pgmq").setLevel(TRACE);
 
         dataSource.setDatabaseName("postgres");
         dataSource.setUser("postgres");
         dataSource.setPassword("postgres");
         dataSource.setPortNumbers(new int[] {5432});
     }
-
 }

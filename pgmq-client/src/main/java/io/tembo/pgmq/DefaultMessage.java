@@ -4,14 +4,24 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * Default implementation of {@link Message}.
+ */
 public class DefaultMessage implements Message {
-    private final Integer messageId;
+    private final MessageId messageId;
     private final Integer readCount;
     private final Instant enqueuedAt;
     private final Instant visibilityTime;
     private final byte[] message;
 
-    DefaultMessage(Integer messageId, Integer readCount, Instant enqueuedAt, Instant visibilityTime, byte[] message) {
+    /**
+     * @param messageId MessageId
+     * @param readCount Read count
+     * @param enqueuedAt Enqueued at
+     * @param visibilityTime Visibility time
+     * @param message Message bytes or empty array if no message is present
+     */
+    DefaultMessage(MessageId messageId, Integer readCount, Instant enqueuedAt, Instant visibilityTime, byte[] message) {
         this.messageId = messageId;
         this.readCount = readCount;
         this.enqueuedAt = enqueuedAt;
@@ -20,7 +30,7 @@ public class DefaultMessage implements Message {
     }
 
     @Override
-    public Integer getMessageId() {
+    public MessageId getMessageId() {
         return messageId;
     }
 

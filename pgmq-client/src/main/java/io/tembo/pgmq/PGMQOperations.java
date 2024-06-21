@@ -12,57 +12,46 @@ import java.util.Optional;
 interface PGMQOperations {
 
 
-    void create() ;
+    void create(String queueName) ;
 
-    void createUnlogged() ;
+    void createUnlogged(String queueName) ;
 
-    /**
-     * Destroy a queue. This deletes the queue's tables, indexes and metadata.
-     * Does not deletes any data related to adjacent queues.
-     * <br>
-     * Example:
-     * <pre>
-     * {@code
-     * FIXME: Code example
-     * }
-     * </pre>
-     *
-     */
-    void destroy();
-
-    MessageId send(String message);
-
-    MessageId sendDelay(String message, int delaySec);
-
-    List<Integer> sendBatch(List<String> messages);
+    void destroy(String queueName);
 
 
-    Optional<Message> read(int visibilityTime);
+    <T> MessageId send(String queueName, T message);
 
-    Optional<Message> read();
+    MessageId sendDelay(String queueName, String message, int delaySec);
 
-    Optional<List<Message>> readBatch(int visibilityTime, int messageCount);
-
-    Optional<List<Message>> readBatchWithPool(int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
+    List<MessageId> sendBatch(String queueName, List<String> messages);
 
 
-    MessageId delete(MessageId messageId);
+    Optional<Message> read(String queueName, int visibilityTime);
 
-    MessageId deleteBatch(MessageId[] messageIds);
+    Optional<Message> read(String queueName);
 
+    Optional<List<Message>> readBatch(String queueName, int visibilityTime, int messageCount);
 
-    MessageId purge();
-
-
-    MessageId archive(MessageId messageId);
-
-    MessageId archiveBatch(MessageId[] messageIds);
+    Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
 
 
-    Optional<Message> pop();
+    Integer delete(String queueName, MessageId messageId);
+
+    Integer deleteBatch(String queueName, List<MessageId> messageIds);
 
 
-    Optional<Message> setVisibilityTimeout(int messageId, Instant visibilityTimeout);
+    Integer purge(String queueName);
+
+
+    Integer archive(String queueName, MessageId messageId);
+
+    Integer archiveBatch(String queueName, List<MessageId> messageIds);
+
+
+    Optional<Message> pop(String queueName);
+
+
+    Optional<Message> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout);
 
 
     Optional<List<PGMQueueMetadata>> listQueues();

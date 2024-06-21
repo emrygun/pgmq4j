@@ -1,21 +1,19 @@
 package io.tembo.pgmq;
 
-import org.postgresql.ds.PGConnectionPoolDataSource;
-
 class ExtensionContext {
     private final JsonSerializer serializer;
-    private final PGConnectionPoolDataSource poolDataSource;
+    private final ConnectionProvider connectionProvider;
 
-    ExtensionContext(JsonSerializer serializer, PGConnectionPoolDataSource poolDataSource) {
+    ExtensionContext(JsonSerializer serializer, ConnectionProvider connectionProvider) {
         this.serializer = serializer;
-        this.poolDataSource = poolDataSource;
+        this.connectionProvider = connectionProvider;
     }
 
     public JsonSerializer getSerializer() {
         return serializer;
     }
 
-    public PGConnectionPoolDataSource getPoolDataSource() {
-        return poolDataSource;
+    public ConnectionProvider getConnectionProvider() {
+        return connectionProvider;
     }
 }

@@ -14,7 +14,6 @@
         <module>integration-test</module>
 
         <module>examples/basic</module>
-        <module>examples/worker-threads</module>
     </modules>
 
     <properties>

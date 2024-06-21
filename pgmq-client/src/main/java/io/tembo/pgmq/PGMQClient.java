@@ -46,17 +46,17 @@ interface PGMQClient {
     Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
 
 
-    MessageId delete(String queueName, MessageId messageId);
+    Integer delete(String queueName, MessageId messageId);
 
-    MessageId deleteBatch(String queueName, MessageId[] messageIds);
-
-
-    MessageId purge(String queueName);
+    Integer deleteBatch(String queueName, List<MessageId> messageIds);
 
 
-    MessageId archive(String queueName, MessageId messageId);
+    Integer purge(String queueName);
 
-    MessageId archiveBatch(String queueName, MessageId[] messageIds);
+
+    Integer archive(String queueName, MessageId messageId);
+
+    Integer archiveBatch(String queueName, List<MessageId> messageIds);
 
 
     Optional<Message> pop(String queueName);

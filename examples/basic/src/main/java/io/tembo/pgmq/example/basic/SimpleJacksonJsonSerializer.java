@@ -1,4 +1,4 @@
-package io.tembo;
+package io.tembo.pgmq.example.basic;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

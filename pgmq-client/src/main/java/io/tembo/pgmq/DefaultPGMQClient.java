@@ -1,6 +1,8 @@
 package io.tembo.pgmq;
 
 import org.postgresql.jdbc.PgConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -9,10 +11,9 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import static io.tembo.pgmq.ClientErrorFactory.archiveError;
 import static io.tembo.pgmq.ClientErrorFactory.createQueueError;
@@ -26,17 +27,29 @@ import static io.tembo.pgmq.ClientErrorFactory.sendMessageError;
 import static io.tembo.pgmq.PGMQQuery.destroyQueueClientOnly;
 import static io.tembo.pgmq.PGMQQuery.enqueue;
 import static io.tembo.pgmq.PGMQQuery.initQueueClientOnly;
-import static java.util.logging.Level.INFO;
 
 /**
- * Core client of the pgmq transactions.
+ * <p>
+ * Core client of the pgmq transactions. This class is the main class to interact with the pgmq.
+ * <br>
  * Contains low level database transactions of pgmq over postgresql connection.
+ * </p>
+ * Example:
+ * <pre>
+ * {@code
+ *     var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/pgmq", "pgmq", "pgmq");
+ *     var client = new DefaultPGMQClient(connection);
+ *     client.create("queue_name");
+ *     client.send("queue_name", "message");
+ * }
+ * </pre>
  *
+ * @see PGMQClient
  * @see PGMQQuery
  * @see PGMQueue
  */
 public final class DefaultPGMQClient implements PGMQClient {
-    private static final Logger LOG = Logger.getLogger(PGMQueue.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(PGMQueue.class);
 
     private final PgConnection connection;
 
@@ -53,10 +66,10 @@ public final class DefaultPGMQClient implements PGMQClient {
 
     @Override
     public void create(String queueName) {
-        LOG.log(INFO, "Create queue with name %s".formatted(queueName));
+        LOG.trace("Create queue with name %s".formatted(queueName));
         try {
             for (var statement : initQueueClientOnly(queueName, true)) {
-                LOG.log(INFO, "Create queue : Execute statement : %s".formatted(statement));
+                LOG.trace("Create queue : Execute statement : %s".formatted(statement));
                 connection.prepareStatement(statement).execute();
             }
         } catch (SQLException e) {
@@ -95,25 +108,25 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Integer send(String queueName, String message) {
+    public MessageId send(String queueName, String message) {
         return sendDelay(queueName, message, 0);
     }
 
     @Override
-    public Integer sendDelay(String queueName, String message, int delaySec) {
+    public MessageId sendDelay(String queueName, String message, int delaySec) {
         try {
             var statement = connection.prepareStatement(enqueue(queueName, 1, delaySec));
             statement.setString(1, message);
             var result = statement.executeQuery();
             result.next();
-            return result.getInt("msg_id");
+            return new MessageId(result.getLong("msg_id"));
         } catch (SQLException e) {
             throw sendMessageError(delaySec, 1, e);
         }
     }
 
     @Override
-    public List<Integer> sendBatch(String queueName, List<String> messages) {
+    public List<MessageId> sendBatch(String queueName, List<String> messages) {
         try {
             var statement = connection.prepareStatement(enqueue(queueName, messages.size(), 0));
 
@@ -122,10 +135,10 @@ public final class DefaultPGMQClient implements PGMQClient {
             }
             var result = statement.executeQuery();
 
-            List<Integer> messageIds = new ArrayList<>();
+            List<MessageId> messageIds = new ArrayList<>();
             for (int i = 0; i < messages.size(); i++) {
                 result.next();
-                messageIds.add(result.getInt("msg_id"));
+                messageIds.add(new MessageId(result.getLong("msg_id")));
             }
 
             return messageIds;
@@ -159,7 +172,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     public Optional<Message> read(String queueName, int visibilityTime) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, 1);
-            LOG.log(INFO, "Read queue : Execute statement : %s".formatted(query));
+            LOG.trace("Read queue : Execute statement : %s".formatted(query));
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
             if (resultSet.next()) {
                 var message = toMessage(resultSet);
@@ -197,14 +210,16 @@ public final class DefaultPGMQClient implements PGMQClient {
     @Override
     public Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
+
+
         return Optional.empty();
     }
 
     @Override
-    public Integer delete(String queueName, int messageId) {
+    public Integer delete(String queueName, MessageId messageId) {
         try {
             var statement = connection.prepareStatement(PGMQQuery.deleteBatch(queueName));
-            var array = connection.createArrayOf("int", new Integer[] {messageId});
+            var array = connection.createArrayOf("long", new Long[] {messageId.getValue()});
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
@@ -213,10 +228,10 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Integer deleteBatch(String queueName, int[] messageIds) {
+    public Integer deleteBatch(String queueName, List<MessageId> messageIds) {
         try {
             var statement = connection.prepareStatement(PGMQQuery.deleteBatch(queueName));
-            var array = connection.createArrayOf("int", Arrays.stream(messageIds).boxed().toArray(Integer[]::new));
+            var array = connection.createArrayOf("long", messageIds.stream().map(MessageId::getValue).toArray(Long[]::new));
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
@@ -234,15 +249,15 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Integer archive(String queueName, int messageId) {
-        return archiveBatch(queueName, new int[] {messageId});
+    public Integer archive(String queueName, MessageId messageId) {
+        return archiveBatch(queueName, Collections.singletonList(messageId));
     }
 
     @Override
-    public Integer archiveBatch(String queueName, int[] messageIds) {
+    public Integer archiveBatch(String queueName, List<MessageId> messageIds) {
         try {
             var statement = connection.prepareStatement(PGMQQuery.archiveBatch(queueName));
-            var array = connection.createArrayOf("int", Arrays.stream(messageIds).boxed().toArray(Integer[]::new));
+            var array = connection.createArrayOf("long", messageIds.stream().map(MessageId::getValue).toArray(Long[]::new));
             statement.setArray(1, array);
             return statement.executeUpdate();
         } catch (SQLException e) {
@@ -263,7 +278,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<Message> setVisibilityTimeout(String queueName, int messageId, Instant visibilityTimeout) {
+    public Optional<Message> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout) {
         //FIXME: Implementation is missing
         return null;
     }
@@ -271,7 +286,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     private static DefaultMessage toMessage(ResultSet resultSet) {
         try {
             return new DefaultMessage(
-                    resultSet.getInt("msg_id"),
+                    new MessageId(resultSet.getLong("msg_id")),
                     resultSet.getInt("read_ct"),
                     resultSet.getTimestamp("enqueued_at").toInstant(),
                     resultSet.getTimestamp("vt").toInstant(),
