@@ -1,12 +1,10 @@
 package io.tembo.pgmq;
 
-import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +24,7 @@ public class PGMQueue implements PGMQOperations {
     PGMQueue(ExtensionContext context) throws SQLException {
         this.context = context;
         this.jsonSerializer = context.getSerializer();
-        this.client = new DefaultPGMQClient((PgConnection) context.getConnectionProvider().getConnection());
+        this.client = new DefaultPGMQClient(context.getConnectionProvider().getConnection());
 
         createExtensionIfNotPresent(context.getConnectionProvider().getConnection());
     }
@@ -60,37 +58,29 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public MessageId sendDelay(String queueName, String message, int delaySec) {
-        return client.sendDelay(queueName, message, delaySec);
+    public <T> MessageId sendDelay(String queueName, T message, int delaySec) {
+        return client.sendDelay(queueName, jsonSerializer.toJson(message), delaySec);
     }
 
     @Override
-    public List<MessageId> sendBatch(String queueName, List<String> messages) {
-        return client.sendBatch(queueName, messages);
+    public <T> List<MessageId> sendBatch(String queueName, List<T> messages) {
+        return client.sendBatch(queueName, messages.stream().map(jsonSerializer::toJson).toList());
     }
 
     // Read operations
 
     @Override
-    public Optional<Message> read(String queueName, int visibilityTime) {
-        return client.read(queueName, visibilityTime);
+    public Reader<?> read(String queueName) {
+        return new Reader<String>(this, this.client, queueName);
     }
 
+    /*
     @Override
-    public Optional<Message> read(String queueName) {
-        return read(queueName, 30);
-    }
-
-    @Override
-    public Optional<List<Message>> readBatch(String queueName, int visibilityTime, int messageCount) {
-        return client.readBatch(queueName, visibilityTime, messageCount);
-    }
-
-    @Override
-    public Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+    public Optional<List<AbstractMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
         return Optional.empty();
     }
+     */
 
     @Override
     public Integer delete(String queueName, MessageId messageId) {
@@ -118,12 +108,13 @@ public class PGMQueue implements PGMQOperations {
     }
 
     @Override
-    public Optional<Message> pop(String queueName) {
-        return client.pop(queueName);
+    public <T> Optional<Message<T>> pop(String queueName, Class<T> clazz) {
+        return null; //FIXME: Implementation is missing
+        // return client.pop(queueName);
     }
 
     @Override
-    public Optional<Message> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout) {
+    public <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout, Class<T> clazz) {
         return null; //FIXME: Implementation is missing
     }
 
@@ -132,4 +123,7 @@ public class PGMQueue implements PGMQOperations {
         return client.listQueues();
     }
 
+    JsonSerializer getJsonSerializer() {
+        return jsonSerializer;
+    }
 }

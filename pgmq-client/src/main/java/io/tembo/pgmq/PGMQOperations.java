@@ -1,38 +1,33 @@
 package io.tembo.pgmq;
 
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * FIXME: Rust implementasyonunda read_with_pool yok :/
- */
 interface PGMQOperations {
 
+    void create(String queueName);
 
-    void create(String queueName) ;
-
-    void createUnlogged(String queueName) ;
+    void createUnlogged(String queueName);
 
     void destroy(String queueName);
 
 
     <T> MessageId send(String queueName, T message);
 
-    MessageId sendDelay(String queueName, String message, int delaySec);
+    <T> MessageId sendDelay(String queueName, T message, int delaySec);
 
-    List<MessageId> sendBatch(String queueName, List<String> messages);
+    <T> List<MessageId> sendBatch(String queueName, List<T> messages);
 
 
-    Optional<Message> read(String queueName, int visibilityTime);
+    Reader<?> read(String queueName);
 
-    Optional<Message> read(String queueName);
+    // Optional<AbstractMessage> read(String queueName);
 
-    Optional<List<Message>> readBatch(String queueName, int visibilityTime, int messageCount);
+    // Optional<List<AbstractMessage>> readBatch(String queueName, int visibilityTime, int messageCount);
 
-    Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
+    // Optional<List<AbstractMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
 
 
     Integer delete(String queueName, MessageId messageId);
@@ -48,10 +43,10 @@ interface PGMQOperations {
     Integer archiveBatch(String queueName, List<MessageId> messageIds);
 
 
-    Optional<Message> pop(String queueName);
+    <T> Optional<Message<T>> pop(String queueName, Class<T> clazz);
 
 
-    Optional<Message> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout);
+    <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout, Class<T> clazz);
 
 
     Optional<List<PGMQueueMetadata>> listQueues();

@@ -15,9 +15,12 @@ public class SimpleJacksonJsonSerializer implements JsonSerializer {
     }
 
     @Override
-    public <T> T fromJson(String json, Class<T> classOfT) {
+    public <T> T fromJson(String json, Class<T> clazz) {
+        if (clazz == String.class) {
+            return (T) json;
+        }
         try {
-            return mapper.readValue(json.getBytes(StandardCharsets.UTF_8), classOfT);
+            return mapper.readValue(json, clazz);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

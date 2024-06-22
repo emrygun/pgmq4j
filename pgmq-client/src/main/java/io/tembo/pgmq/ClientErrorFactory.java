@@ -20,7 +20,7 @@ public class ClientErrorFactory {
     static PGMQError sendMessageError(int delaySec, int messageCount, Throwable ex) {
         return new PGMQError(
                 "PGMQ_ERR_003",
-                "Error while sending message. Delay: %d seconds, Message count: %d".formatted(delaySec, messageCount),
+                "Error while sending message. Delay: %d seconds, AbstractMessage count: %d".formatted(delaySec, messageCount),
                 ex
         );
     }

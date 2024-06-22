@@ -1,6 +1,5 @@
 package io.tembo.pgmq;
 
-import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,6 @@ import static io.tembo.pgmq.PGMQQuery.initQueueClientOnly;
  * Example:
  * <pre>
  * {@code
- *     var connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/pgmq", "pgmq", "pgmq");
  *     var client = new DefaultPGMQClient(connection);
  *     client.create("queue_name");
  *     client.send("queue_name", "message");
@@ -51,9 +49,9 @@ import static io.tembo.pgmq.PGMQQuery.initQueueClientOnly;
 public final class DefaultPGMQClient implements PGMQClient {
     private static final Logger LOG = LoggerFactory.getLogger(PGMQueue.class);
 
-    private final PgConnection connection;
+    private final Connection connection;
 
-    DefaultPGMQClient(PgConnection connection) throws SQLException {
+    DefaultPGMQClient(Connection connection) throws SQLException {
         this.connection = connection;
         createExtensionIfNotPresent(connection);
     }
@@ -80,13 +78,9 @@ public final class DefaultPGMQClient implements PGMQClient {
     @Override
     public void createUnlogged(String queueName) {
         try {
-            connection.setAutoCommit(false);
-
             for (var statement : initQueueClientOnly(queueName, false)) {
                 connection.prepareStatement(statement).execute();
             }
-            connection.commit();
-
         } catch (SQLException e) {
             throw createQueueError(queueName, false, e);
         }
@@ -169,7 +163,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<Message> read(String queueName, int visibilityTime) {
+    public Optional<ByteArrayMessage> read(String queueName, int visibilityTime) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, 1);
             LOG.trace("Read queue : Execute statement : %s".formatted(query));
@@ -186,33 +180,31 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<Message> read(String queueName) {
+    public Optional<ByteArrayMessage> read(String queueName) {
         return read(queueName, 30);
     }
 
     @Override
-    public Optional<List<Message>> readBatch(String queueName, int visibilityTime, int messageCount) {
+    public List<ByteArrayMessage> readBatch(String queueName, int visibilityTime, int messageCount) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, messageCount);
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
 
-            List<Message> messages = new ArrayList<>();
+            List<ByteArrayMessage> messages = new ArrayList<>();
             while (resultSet.next()) {
                 var message = toMessage(resultSet);
                 messages.add(message);
             }
-            return Optional.of(messages);
+            return messages;
         } catch (SQLException e) {
-            return Optional.empty();
+            return Collections.emptyList();
         }
     }
 
     @Override
-    public Optional<List<Message>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
+    public List<ByteArrayMessage> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
         //FIXME: Implementation
-
-
-        return Optional.empty();
+        return Collections.emptyList();
     }
 
     @Override
@@ -266,7 +258,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<Message> pop(String queueName) {
+    public Optional<ByteArrayMessage> pop(String queueName) {
         try {
             var query = PGMQQuery.pop(queueName);
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
@@ -278,14 +270,14 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<Message> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout) {
+    public Optional<ByteArrayMessage> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout) {
         //FIXME: Implementation is missing
         return null;
     }
 
-    private static DefaultMessage toMessage(ResultSet resultSet) {
+    private static ByteArrayMessage toMessage(ResultSet resultSet) {
         try {
-            return new DefaultMessage(
+            return new ByteArrayMessage(
                     new MessageId(resultSet.getLong("msg_id")),
                     resultSet.getInt("read_ct"),
                     resultSet.getTimestamp("enqueued_at").toInstant(),
