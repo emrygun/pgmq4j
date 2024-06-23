@@ -6,7 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import static dev.emreuygun.utils.DatabaseUtils.dataSource;
 import static dev.emreuygun.utils.DatabaseUtils.postgresContainer;
 
-public abstract class TestBase {
+public abstract class PGMQueueTest {
 
     @BeforeEach
     public void setup() {
