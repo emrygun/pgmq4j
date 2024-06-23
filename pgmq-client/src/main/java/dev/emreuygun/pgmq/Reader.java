@@ -37,6 +37,7 @@ public class Reader<T> {
         this.clazz = reader.clazz;
         this.visibilityTime = reader.visibilityTime;
         this.client = reader.client;
+        this.pollingConfig = reader.pollingConfig;
     }
 
     @SuppressWarnings("unchecked")
@@ -90,7 +91,7 @@ public class Reader<T> {
     }
 
     /**
-     * //FIXME: Implementation is missing
+     * //TODO: Better implementation needed
      *
      * Polls for a value using the configured polling interval and timeout.
      * @param valueSupplier the supplier to poll for a value

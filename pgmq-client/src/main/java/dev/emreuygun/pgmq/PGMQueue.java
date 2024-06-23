@@ -59,7 +59,7 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public <T> MessageId sendDelay(String queueName, T message, int delaySec) {
-        return client.sendDelay(queueName, jsonSerializer.toJson(message), delaySec);
+        return client.send(queueName, jsonSerializer.toJson(message), delaySec);
     }
 
     @Override
@@ -67,20 +67,10 @@ public class PGMQueue implements PGMQOperations {
         return client.sendBatch(queueName, messages.stream().map(jsonSerializer::toJson).toList());
     }
 
-    // Read operations
-
     @Override
     public Reader<?> read(String queueName) {
         return new Reader<String>(this, this.client, queueName);
     }
-
-    /*
-    @Override
-    public Optional<List<AbstractMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
-        //FIXME: Implementation
-        return Optional.empty();
-    }
-     */
 
     @Override
     public Integer delete(String queueName, MessageId messageId) {
@@ -104,7 +94,7 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public Integer archiveBatch(String queueName, List<MessageId> messageIds) {
-        return client.archiveBatch(queueName, messageIds);
+        return client.archive(queueName, messageIds);
     }
 
     @Override

@@ -12,6 +12,7 @@
     <modules>
         <module>pgmq-client</module>
         <module>examples/basic</module>
+        <module>integration-test</module>
     </modules>
 
     <properties>
@@ -21,4 +22,16 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <developers>
+        <developer>
+            <id>emrygun</id>
+            <name>Emre Uygun</name>
+            <email>contact@emreuygun.dev</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:emrygun/pgmq4j.git</connection>
+        <url>https://github.com/emrygun/pgmq4j</url>
+    </scm>
 </project>

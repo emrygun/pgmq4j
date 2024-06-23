@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -102,12 +101,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public MessageId send(String queueName, String message) {
-        return sendDelay(queueName, message, 0);
-    }
-
-    @Override
-    public MessageId sendDelay(String queueName, String message, int delaySec) {
+    public MessageId send(String queueName, String message, int delaySec) {
         try {
             var statement = connection.prepareStatement(enqueue(queueName, 1, delaySec));
             statement.setString(1, message);
@@ -180,11 +174,6 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<ByteArrayMessage> read(String queueName) {
-        return read(queueName, 30);
-    }
-
-    @Override
     public List<ByteArrayMessage> readBatch(String queueName, int visibilityTime, int messageCount) {
         try {
             var query = PGMQQuery.read(queueName, visibilityTime, messageCount);
@@ -199,12 +188,6 @@ public final class DefaultPGMQClient implements PGMQClient {
         } catch (SQLException e) {
             return Collections.emptyList();
         }
-    }
-
-    @Override
-    public List<ByteArrayMessage> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval) {
-        //FIXME: Implementation
-        return Collections.emptyList();
     }
 
     @Override
@@ -241,12 +224,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Integer archive(String queueName, MessageId messageId) {
-        return archiveBatch(queueName, Collections.singletonList(messageId));
-    }
-
-    @Override
-    public Integer archiveBatch(String queueName, List<MessageId> messageIds) {
+    public Integer archive(String queueName, List<MessageId> messageIds) {
         try {
             var statement = connection.prepareStatement(PGMQQuery.archiveBatch(queueName));
             var array = connection.createArrayOf("long", messageIds.stream().map(MessageId::getValue).toArray(Long[]::new));
