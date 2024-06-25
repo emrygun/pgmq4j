@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import static dev.emreuygun.pgmq.ClientErrorFactory.popError;
 import static dev.emreuygun.pgmq.ClientErrorFactory.purgeError;
 import static dev.emreuygun.pgmq.ClientErrorFactory.readMessageError;
 import static dev.emreuygun.pgmq.ClientErrorFactory.sendMessageError;
+import static dev.emreuygun.pgmq.ClientErrorFactory.setVisibilityTimeoutError;
 import static dev.emreuygun.pgmq.PGMQQuery.destroyQueueClientOnly;
 import static dev.emreuygun.pgmq.PGMQQuery.enqueue;
 import static dev.emreuygun.pgmq.PGMQQuery.initQueueClientOnly;
@@ -136,7 +138,7 @@ public final class DefaultPGMQClient implements PGMQClient {
     }
 
     @Override
-    public Optional<List<PGMQueueMetadata>> listQueues() {
+    public List<PGMQueueMetadata> listQueues() {
         try {
             ResultSet resultSet = connection.prepareStatement("SELECT * from pgmq.list_queues();").executeQuery();
             List<PGMQueueMetadata> list = new ArrayList<>();
@@ -150,7 +152,7 @@ public final class DefaultPGMQClient implements PGMQClient {
                 list.add(metadata);
             }
 
-            return Optional.of(list);
+            return list;
         } catch (SQLException e) {
             throw listQueuesError(e);
         }
@@ -240,17 +242,23 @@ public final class DefaultPGMQClient implements PGMQClient {
         try {
             var query = PGMQQuery.pop(queueName);
             ResultSet resultSet = connection.prepareStatement(query).executeQuery();
-            resultSet.next();
-            return Optional.of(toMessage(resultSet));
+            boolean messagePresent = resultSet.next();
+            return messagePresent ? Optional.of(toMessage(resultSet)) : Optional.empty();
         } catch (SQLException e) {
             throw popError(queueName, e);
         }
     }
 
     @Override
-    public Optional<ByteArrayMessage> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout) {
-        //FIXME: Implementation is missing
-        return null;
+    public Optional<ByteArrayMessage> setVisibilityTimeout(String queueName, MessageId messageId, Duration visibilityTimeout) {
+        try {
+            var query = PGMQQuery.setVisibilityTimeout(queueName, messageId.getValue(), visibilityTimeout.toSeconds());
+            ResultSet resultSet = connection.prepareStatement(query).executeQuery();
+            boolean messagePresent = resultSet.next();
+            return messagePresent ? Optional.of(toMessage(resultSet)) : Optional.empty();
+        } catch (SQLException e) {
+            throw setVisibilityTimeoutError(queueName, messageId, visibilityTimeout, e);
+        }
     }
 
     private static ByteArrayMessage toMessage(ResultSet resultSet) {

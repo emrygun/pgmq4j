@@ -1,6 +1,7 @@
 package dev.emreuygun.pgmq;
 
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -23,12 +24,6 @@ interface PGMQOperations {
 
     Reader<?> read(String queueName);
 
-    // Optional<AbstractMessage> read(String queueName);
-
-    // Optional<List<AbstractMessage>> readBatch(String queueName, int visibilityTime, int messageCount);
-
-    // Optional<List<AbstractMessage>> readBatchWithPool(String queueName, int visibilityTime, int maxBatchSize, Duration pollTimeout, Duration pollInterval);
-
 
     Integer delete(String queueName, MessageId messageId);
 
@@ -46,8 +41,8 @@ interface PGMQOperations {
     <T> Optional<Message<T>> pop(String queueName, Class<T> clazz);
 
 
-    <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout, Class<T> clazz);
+    <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Duration visibilityTimeout, Class<T> clazz);
 
 
-    Optional<List<PGMQueueMetadata>> listQueues();
+    List<PGMQueueMetadata> listQueues();
 }

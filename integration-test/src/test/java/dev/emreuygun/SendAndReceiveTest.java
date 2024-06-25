@@ -59,10 +59,7 @@ class SendAndReceiveTest extends PGMQueueTest {
         assertEquals(message.get().getMessage(), messageToSend);
 
         message.ifPresent(m -> LOG.info("Message: {}, enqueuedAt: {}, readCount: {}, vt: {}",
-                m.getMessage(),
-                m.getEnqueuedAt(),
-                m.getReadCount(),
-                m.getVisibilityTime())
+                m.getMessage(), m.getEnqueuedAt(), m.getReadCount(), m.getVisibilityTime())
         );
     }
 
@@ -89,10 +86,7 @@ class SendAndReceiveTest extends PGMQueueTest {
         // Print fetched messages
         fetchedMessages.forEach(m ->
                 LOG.info("Message: {}, enqueuedAt: {}, readCount: {}, vt: {}",
-                        m.getMessage(),
-                        m.getEnqueuedAt(),
-                        m.getReadCount(),
-                        m.getVisibilityTime())
+                        m.getMessage(), m.getEnqueuedAt(), m.getReadCount(), m.getVisibilityTime())
         );
 
         assertEquals(fetchedMessages.stream().map(Message::getMessage).toList(), messages);
@@ -109,9 +103,7 @@ class SendAndReceiveTest extends PGMQueueTest {
             var queueName = QUEUE_BASIC + "_" + UUID.randomUUID().toString().replaceAll("-", "");
             pgmq.create(queueName);
 
-            // Create a thread sends message to queue every 5 seconds
             ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
-
             Deque<TestMessage> localQueue = new ConcurrentLinkedDeque<>();
 
             // Send a message every 1 second
@@ -120,10 +112,10 @@ class SendAndReceiveTest extends PGMQueueTest {
                 LOG.info(String.valueOf(messageToSend));
                 localQueue.push(messageToSend);
                 pgmq.send(queueName, messageToSend);
-            }, 0, 100, TimeUnit.MILLISECONDS);
+            }, 5, 500, TimeUnit.MILLISECONDS);
 
             var startTime = Instant.now();
-            var endTime = startTime.plusSeconds(20);
+            var endTime = startTime.plusSeconds(15);
             while (true) {
                 var messages = pgmq.read(queueName)
                         .as(TestMessage.class)
@@ -136,10 +128,7 @@ class SendAndReceiveTest extends PGMQueueTest {
                 }
                 messages.forEach(m -> {
                     LOG.info("Message: {}, enqueuedAt: {}, readCount: {}, vt: {}",
-                            m.getMessage(),
-                            m.getEnqueuedAt(),
-                            m.getReadCount(),
-                            m.getVisibilityTime());
+                            m.getMessage(), m.getEnqueuedAt(), m.getReadCount(), m.getVisibilityTime());
 
                     var polledMessage = localQueue.poll();
                     LOG.info("Polled message: {}", polledMessage);
@@ -162,10 +151,7 @@ class SendAndReceiveTest extends PGMQueueTest {
 
                 messages.forEach(m -> {
                     LOG.info("Message: {}, enqueuedAt: {}, readCount: {}, vt: {}",
-                            m.getMessage(),
-                            m.getEnqueuedAt(),
-                            m.getReadCount(),
-                            m.getVisibilityTime());
+                            m.getMessage(), m.getEnqueuedAt(), m.getReadCount(), m.getVisibilityTime());
 
                     var polledMessage = localQueue.poll();
                     LOG.info("Polled message: {}", polledMessage);

@@ -3,8 +3,10 @@ package dev.emreuygun.pgmq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -99,17 +101,36 @@ public class PGMQueue implements PGMQOperations {
 
     @Override
     public <T> Optional<Message<T>> pop(String queueName, Class<T> clazz) {
-        return null; //FIXME: Implementation is missing
-        // return client.pop(queueName);
+        var rawMessage = client.pop(queueName);
+        if (rawMessage.isPresent()) {
+            var byteArrayMessage = rawMessage.get();
+            T convertedRecord = (T) getJsonSerializer().fromJson(new String(byteArrayMessage.getMessage(), StandardCharsets.UTF_8), clazz);
+            return Optional.of(new Message<T>(byteArrayMessage.getMessageId(),
+                    byteArrayMessage.getReadCount(),
+                    byteArrayMessage.getEnqueuedAt(),
+                    byteArrayMessage.getVisibilityTime(),
+                    convertedRecord));
+        }
+        return Optional.empty();
     }
 
     @Override
-    public <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout, Class<T> clazz) {
-        return null; //FIXME: Implementation is missing
+    public <T> Optional<Message<T>> setVisibilityTimeout(String queueName, MessageId messageId, Duration visibilityTimeout, Class<T> clazz) {
+        var rawMessage = client.setVisibilityTimeout(queueName, messageId, visibilityTimeout);
+        if (rawMessage.isPresent()) {
+            var byteArrayMessage = rawMessage.get();
+            T convertedRecord = (T) getJsonSerializer().fromJson(new String(byteArrayMessage.getMessage(), StandardCharsets.UTF_8), clazz);
+            return Optional.of(new Message<T>(byteArrayMessage.getMessageId(),
+                    byteArrayMessage.getReadCount(),
+                    byteArrayMessage.getEnqueuedAt(),
+                    byteArrayMessage.getVisibilityTime(),
+                    convertedRecord));
+        }
+        return Optional.empty();
     }
 
     @Override
-    public Optional<List<PGMQueueMetadata>> listQueues() {
+    public List<PGMQueueMetadata> listQueues() {
         return client.listQueues();
     }
 

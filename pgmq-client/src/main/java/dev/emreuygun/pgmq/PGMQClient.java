@@ -1,6 +1,7 @@
 package dev.emreuygun.pgmq;
 
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -11,11 +12,7 @@ interface PGMQClient {
 
     void createUnlogged(String queue);
 
-    /**
-     * Destroy a queue. This deletes the queue's tables, indexes and metadata.
-     * Does not deletes any data related to adjacent queues.
-     * @param queueName Queue name.
-     */
+
     void destroy(String queueName);
 
 
@@ -27,7 +24,6 @@ interface PGMQClient {
     Optional<ByteArrayMessage> read(String queueName, int visibilityTime);
 
     List<ByteArrayMessage> readBatch(String queueName, int visibilityTime, int messageCount);
-
 
 
     Integer delete(String queueName, MessageId messageId);
@@ -44,8 +40,8 @@ interface PGMQClient {
     Optional<ByteArrayMessage> pop(String queueName);
 
 
-    Optional<ByteArrayMessage> setVisibilityTimeout(String queueName, MessageId messageId, Instant visibilityTimeout);
+    Optional<ByteArrayMessage> setVisibilityTimeout(String queueName, MessageId messageId, Duration visibilityTimeout);
 
 
-    Optional<List<PGMQueueMetadata>> listQueues();
+    List<PGMQueueMetadata> listQueues();
 }

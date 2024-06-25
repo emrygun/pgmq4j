@@ -239,4 +239,10 @@ final class PGMQQuery {
         RETURNING *;
         """.formatted(PGMQ_SCHEMA, QUEUE_PREFIX, queueName, PGMQ_SCHEMA, QUEUE_PREFIX, queueName);
     }
+
+    public static String setVisibilityTimeout(String queueName, long messageId, long visibilityTimeout) {
+        return """
+        SELECT * from %s.set_vt('%s', %d, %d);
+        """.formatted(PGMQ_SCHEMA, queueName, messageId, visibilityTimeout);
+    }
 }

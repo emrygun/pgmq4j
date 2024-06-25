@@ -1,5 +1,7 @@
 package dev.emreuygun.pgmq;
 
+import java.time.Duration;
+
 public class ClientErrorFactory {
     static PGMQError createQueueError(String queueName, boolean logged, Throwable ex) {
         return new PGMQError(
@@ -69,6 +71,14 @@ public class ClientErrorFactory {
         return new PGMQError(
                 "PGMQ_ERR_009",
                 "Error while popping message from queue. Queue: %s.".formatted(queueName),
+                ex
+        );
+    }
+
+    static PGMQError setVisibilityTimeoutError(String queueName, MessageId messageId, Duration visibilityTimeout, Throwable ex) {
+        return new PGMQError(
+                "PGMQ_ERR_010",
+                "Error while setting visibility timeout. Queue: %s, MessageId: %s, VisibilityTimeout: %s.".formatted(queueName, messageId, visibilityTimeout),
                 ex
         );
     }
