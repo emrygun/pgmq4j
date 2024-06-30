@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>pgmq-client</artifactId>
+    <artifactId>pgmq4j-core</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

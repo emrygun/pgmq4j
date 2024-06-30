@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>pgmq-client</module>
+        <module>pgmq4j-core</module>
         <module>examples/basic</module>
         <module>integration-test</module>
     </modules>

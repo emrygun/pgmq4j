@@ -106,7 +106,7 @@ class SendAndReceiveTest extends PGMQueueTest {
             ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
             Deque<TestMessage> localQueue = new ConcurrentLinkedDeque<>();
 
-            // Send a message every 1 second
+            // Send a message every 0.5 second
             var scheduledSender = executor.scheduleAtFixedRate(() -> {
                 var messageToSend = new TestMessage("test", Instant.now().getEpochSecond());
                 LOG.info(String.valueOf(messageToSend));
